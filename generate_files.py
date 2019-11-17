@@ -13,4 +13,4 @@ def make_files(day_folder: Path, *files: Union[str, Path]):
 
 
 day_folder = Path(f'day{day}/')
-make_files(day_folder, 'input.txt', 'part1.py', 'part2.py')
+make_files(day_folder, 'input.txt', 'part1.py', 'part2.py', 'notes.md')
