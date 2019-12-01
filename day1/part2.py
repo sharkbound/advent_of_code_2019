@@ -18,3 +18,8 @@ def main():
 
 if __name__ == '__main__':
     main()
+
+    # fib lambda using walrus, idk ether, but its neat
+    # f = lambda n: [(a := 0), (b := 1)] + \
+    #               [(c := a) + (a := b) + (b := a + c) - a - c for _ in range(n - 2)]
+    # print(*f(100), sep='\n')
