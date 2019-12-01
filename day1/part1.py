@@ -1,13 +1,17 @@
-from read import read, read_lines
+from read import read_lines
 
 
-def solve_part_(data):
-    pass
+def get_fuel(mass):
+    return int(mass / 3) - 2
+
+
+def solve_part_1(masses):
+    return sum(map(get_fuel, masses))
 
 
 def main():
-    data = read()
-    print(solve_part_(data))
+    data = list(map(int, read_lines()))
+    print(solve_part_1(data))
 
 
 if __name__ == '__main__':

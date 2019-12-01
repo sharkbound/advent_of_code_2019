@@ -30,4 +30,4 @@ if __name__ == '__main__':
 
 
 day_folder = Path(f'day{day}/')
-make_files(day_folder, 'input.txt', 'part1.py', 'part2.py', 'notes.md')
+make_files(day_folder, 'data.txt', 'part1.py', 'part2.py', 'notes.md')
