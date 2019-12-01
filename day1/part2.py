@@ -1,11 +1,10 @@
 from read import read_lines
 
 
-def get_fuel(mass, total=0):
-    fuel = int(mass / 3) - 2
-    if fuel <= 0:
-        return total
-    return fuel + get_fuel(fuel, total)
+def get_fuel(mass):
+    if (fuel := int(mass / 3) - 2) <= 0:
+        return 0
+    return fuel + get_fuel(fuel)
 
 
 def solve_part_2(masses):
