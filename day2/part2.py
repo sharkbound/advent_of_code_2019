@@ -12,6 +12,15 @@ op_lengths = {
 def solve_part_1(data):
     orig = data.copy()
 
+    # for a in range(100):
+    #     for b in range(100):
+    #         data = orig.copy()
+    #         data[1:3] = a, b
+    #         execute(data)
+    #
+    #         if data[0] == 19690720:
+    #             return 100 * a + b
+
     for a in range(100):
         for b in range(100):
             data = orig.copy()
