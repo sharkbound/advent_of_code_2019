@@ -46,7 +46,7 @@ def solve_part_1(data):
     w1: Wire
     w2: Wire
     w1, w2 = map(parse_wire, data)
-    print(min(w1.collisions(w2)))
+    return min(w1.collisions(w2))
 
 
 def main():

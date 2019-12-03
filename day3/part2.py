@@ -1,13 +1,59 @@
-from read import read, read_lines
+import re
+from typing import Tuple, NamedTuple, Set, Iterator
+import numpy as np
+from matplotlib import pyplot as plt
+
+from read import read_lines
 
 
-def solve_part_2(data):
-    pass
+def dist(x: int, y: int) -> int:
+    return abs(x) + abs(y)
+
+
+class Wire(NamedTuple):
+    path: Set[Tuple[int, int]]
+
+    def collisions(self, other: 'Wire') -> int:
+        for (x, y) in self.path & other.path:
+            yield dist(x, y)
+
+
+def turns(line: str) -> Iterator[Tuple[str, int]]:
+    for direction, steps in re.findall(r'(\w)(\d+)', line):
+        yield direction, int(steps)
+
+
+def parse_wire(line: str) -> Wire:
+    x = y = 0
+    path = set()
+    d = {}
+    for dir, steps in turns(line):
+        y_off = x_off = 0
+        if dir == 'U':
+            y_off = 1
+        elif dir == 'D':
+            y_off = -1
+        elif dir == 'L':
+            x_off = -1
+        elif dir == 'R':
+            x_off = 1
+        for _ in range(steps):
+            x += x_off
+            y += y_off
+            path.add((x, y))
+            # d[x, y] =
+
+    return Wire(path)
+
+
+def solve_part_1(data):
+    w1, w2 = map(parse_wire, data)
+    return min(w1.collisions(w2))
 
 
 def main():
-    data = read()
-    print(solve_part_2(data))
+    data = read_lines()
+    print(solve_part_1(data))
 
 
 if __name__ == '__main__':
