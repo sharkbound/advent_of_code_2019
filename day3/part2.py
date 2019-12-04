@@ -3,7 +3,7 @@ from typing import Tuple, NamedTuple, Iterator, Dict
 
 from read import read_lines
 
-GRAPH = True
+GRAPH = False
 
 
 def dist(x: int, y: int) -> int:
