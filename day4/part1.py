@@ -1,30 +1,20 @@
 import re
 
-from read import read, read_lines
+from read import read
+
+
+def is_increasing_or_eq(i):
+    last = int(i[0])
+    for digit in map(int, i[1:]):
+        if digit < last:
+            return False
+        last = digit
+    return True
 
 
 def solve_part_1(data):
     start, end = map(int, data.split('-'))
-    password_range = range(start, end + 1)
-    count = 0
-
-    for i in map(str, password_range):
-        if not re.search(r'(\d)\1', i):
-            continue
-
-        last = int(i[0])
-        bad = False
-        for digit in map(int, i[1:]):
-            if digit < last:
-                bad = True
-                break
-            last = digit
-
-        if bad:
-            continue
-
-        count += 1
-    return count
+    return sum(1 for i in map(str, range(start, end + 1)) if re.search(r'(\d)\1', i) and is_increasing_or_eq(i))
 
 
 def main():

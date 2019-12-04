@@ -1,35 +1,24 @@
 import re
 
-from read import read, read_lines
+from read import read
+
+
+def is_increasing_or_eq(i):
+    last = int(i[0])
+    for digit in map(int, i[1:]):
+        if digit < last:
+            return False
+        last = digit
+    return True
+
+
+def has_double(i):
+    return any(m for m in re.finditer(r'(\d)(\1+)', i) if len(''.join(m.groups())) == 2)
 
 
 def solve_part_2(data):
     start, end = map(int, data.split('-'))
-    password_range = range(start, end + 1)
-    count = 0
-
-    for i in map(str, password_range):
-        double = False
-        for m in re.finditer(r'(\d)(\1+)', i):
-            s = ''.join(m.groups())
-            double = double or len(s) == 2
-
-        if not double:
-            continue
-
-        last = int(i[0])
-        bad = False
-        for digit in map(int, i[1:]):
-            if digit < last:
-                bad = True
-                break
-            last = digit
-
-        if bad:
-            continue
-
-        count += 1
-    return count
+    return sum(1 for i in map(str, range(start, end + 1)) if (has_double(i) and is_increasing_or_eq(i)))
 
 
 def main():
