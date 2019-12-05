@@ -21,7 +21,7 @@ def execute(data, inputs: deque):
         am, bm, cm, op = extract(data[i])
         if op == 1:
             a, b, c = data[i + 1:i + 4]
-            data[value(c - 1, cm, data)] = value(a, am, data) + value(b, bm, data)
+            data[value(c, cm, data)] = value(a, am, data) + value(b, bm, data)
         elif op == 2:
             a, b, c = data[i + 1:i + 4]
             data[value(c, cm, data)] = value(a, am, data) * value(b, bm, data)
