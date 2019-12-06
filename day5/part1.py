@@ -2,6 +2,19 @@ from collections import deque
 
 from read import read
 
+REF, IMM = range(2)
+
+
+class Memory:
+    def __init__(self, data=()):
+        self.data = list(data)
+
+    def __getitem__(self, item):
+        return self.data[item]
+
+    def val(self, value, mode):
+        return value if mode == IMM else self.data[value]
+
 
 def expand(code):
     # ABC < modes  DE < opcode
@@ -15,9 +28,9 @@ def param(v, mode, data):
 
 def execute(data, inputs: deque):
     data = data.copy()
-    op_lengths = dict(zip((1, 2, 3, 4), (4, 4, 2, 2)))
     ip = 0
     while True:
+        ipval = data[ip]
         am, bm, cm, op = expand(data[ip])
         if op == 1:
             a, b, c = data[ip + 1:ip + 4]
@@ -28,7 +41,8 @@ def execute(data, inputs: deque):
             data[c] = param(a, am, data) * param(b, bm, data)
             ip += 4
         elif op == 3:
-            data[data[ip + 1]] = inputs.popleft()
+            a = data[ip + 1]
+            data[a] = inputs.popleft()
             ip += 2
         elif op == 4:
             if a := param(data[ip + 1], am, data):
