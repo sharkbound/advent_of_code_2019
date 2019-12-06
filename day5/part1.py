@@ -1,68 +1,91 @@
 from collections import deque
+from dataclasses import dataclass
+from typing import List
 
 from read import read
 
-REF, IMM = range(2)
+TESTING = False
+POINTER, IMMEDIATE = range(2)
+ADD, MUL, INPUT, OUTPUT, TERMINATE = 1, 2, 3, 4, 99
 
 
 class Memory:
     def __init__(self, data=()):
-        self.data = list(data)
+        self._data = list(data)
 
     def __getitem__(self, item):
-        return self.data[item]
+        return self._data[item]
+
+    def __setitem__(self, key, value):
+        self._data[key] = value
 
     def val(self, value, mode):
-        return value if mode == IMM else self.data[value]
+        return value if mode == IMMEDIATE else self._data[value]
 
 
-def expand(code):
-    # ABC < modes  DE < opcode
-    code = str(code).zfill(5)
-    return int(code[0]), int(code[1]), int(code[2]), int(code[3:])
+@dataclass
+class Info:
+    modes: List[int]
+    args: List[int]
+    op: int
+
+    def arg_info(self, i):
+        return self.args[i], self.modes[i]
+
+    def mode(self, index):
+        return self.modes[index]
+
+    def arg(self, index):
+        return self.args[index]
+
+    def __eq__(self, op):
+        return self.op == op
+
+    def view(self, ip, neg, pos):
+        print(self[ip - neg:ip + pos + 1])
+
+    @property
+    def op_len(self):
+        return OPCODE_LENGTHS[self.op]
 
 
-def param(v, mode, data):
-    return v if mode else data[v]
+OPCODE_LENGTHS = {ADD: 4, MUL: 4, INPUT: 2, OUTPUT: 2, TERMINATE: 1}
+
+
+def parse(ip, mem):
+    op_len = {1: 4, 2: 4, 3: 2, 4: 2, 99: 1}
+    raw = str(mem[ip]).zfill(5)
+    mode_a, mode_b, mode_c, op = map(int, [raw[0], raw[1], raw[2], raw[3:]])
+    args = [mem[ip + offset] for offset in range(1, op_len[op])]
+    return Info(modes=[mode_a, mode_b, mode_c], args=args, op=op)
 
 
 def execute(data, inputs: deque):
-    data = data.copy()
+    memory = Memory(data.copy())
     ip = 0
     while True:
-        ipval = data[ip]
-        am, bm, cm, op = expand(data[ip])
-        if op == 1:
-            a, b, c = data[ip + 1:ip + 4]
-            data[c] = param(a, am, data) + param(b, bm, data)
-            ip += 4
-        elif op == 2:
-            a, b, c = data[ip + 1:ip + 4]
-            data[c] = param(a, am, data) * param(b, bm, data)
-            ip += 4
-        elif op == 3:
-            a = data[ip + 1]
-            data[a] = inputs.popleft()
-            ip += 2
-        elif op == 4:
-            if a := param(data[ip + 1], am, data):
-                chunk = data[ip - 4:ip + 5]
-                code = data[ip:ip + 2]
-                print('---------------------------\n'
-                      f'TEST FAILED ON {ip=}\nit was supposed to be 0\nit was actually {a=}\ncode surrounding it: {chunk=}\nthis byte code: {code=}'
-                      f'\n---------------------------')
-                # breakpoint()
-            ip += 2
-        elif op == 99:
-            break
-        else:
-            raise ValueError(f'bad opcode: {op}')
+        info = parse(ip, memory)
 
-    return data
+        if info == ADD:
+            val1 = memory.val(*info.arg_info(0))
+            val2 = memory.val(*info.arg_info(1))
+            memory[memory[info.arg(2)]] = val1 + val2
+        elif info == MUL:
+            val1 = memory.val(*info.arg_info(0))
+            val2 = memory.val(*info.arg_info(1))
+            memory[memory[info.arg(2)]] = val1 * val2
+        elif info == INPUT:
+            memory[memory[info.arg(0)]] = inputs.popleft()
+        elif info == OUTPUT:
+            print(memory[memory[info.arg(0)]])
+        elif info == TERMINATE:
+            break
+
+        ip += info.op_len
 
 
 def solve_part_1(data):
-    if False:
+    if TESTING:
         data = [1002, 4, 3, 4, 33]
     return execute(data, deque([1]))
 
