@@ -3,37 +3,46 @@ from collections import deque
 from read import read
 
 
-def extract(code):
+def expand(code):
     # ABC < modes  DE < opcode
     code = str(code).zfill(5)
     return int(code[0]), int(code[1]), int(code[2]), int(code[3:])
 
 
-def value(v, mode, data):
-    return v if mode == 1 else data[v]
+def param(v, mode, data):
+    return v if mode else data[v]
 
 
 def execute(data, inputs: deque):
     data = data.copy()
-    op_lengths = dict(zip((1, 2, 3, 4, 99), (4, 4, 2, 2, 1)))
-    i = 0
+    op_lengths = dict(zip((1, 2, 3, 4), (4, 4, 2, 2)))
+    ip = 0
     while True:
-        am, bm, cm, op = extract(data[i])
+        am, bm, cm, op = expand(data[ip])
         if op == 1:
-            a, b, c = data[i + 1:i + 4]
-            data[value(c, cm, data)] = value(a, am, data) + value(b, bm, data)
+            a, b, c = data[ip + 1:ip + 4]
+            data[c] = param(a, am, data) + param(b, bm, data)
+            ip += 4
         elif op == 2:
-            a, b, c = data[i + 1:i + 4]
-            data[value(c, cm, data)] = value(a, am, data) * value(b, bm, data)
+            a, b, c = data[ip + 1:ip + 4]
+            data[c] = param(a, am, data) * param(b, bm, data)
+            ip += 4
         elif op == 3:
-            a = data[i + 1]
-            data[value(a, am, data)] = inputs.popleft()
+            data[data[ip + 1]] = inputs.popleft()
+            ip += 2
         elif op == 4:
-            a = data[i + 1]
-            assert a == 0
+            if a := param(data[ip + 1], am, data):
+                chunk = data[ip - 4:ip + 5]
+                code = data[ip:ip + 2]
+                print('---------------------------\n'
+                      f'TEST FAILED ON {ip=}\nit was supposed to be 0\nit was actually {a=}\ncode surrounding it: {chunk=}\nthis byte code: {code=}'
+                      f'\n---------------------------')
+                # breakpoint()
+            ip += 2
         elif op == 99:
             break
-        i += op_lengths[op]
+        else:
+            raise ValueError(f'bad opcode: {op}')
 
     return data
 
