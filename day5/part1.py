@@ -4,7 +4,6 @@ from typing import List
 
 from read import read
 
-TESTING = False
 POINTER, IMMEDIATE = range(2)
 ADD, MUL, INPUT, OUTPUT, TERMINATE = 1, 2, 3, 4, 99
 
@@ -37,8 +36,8 @@ class Info:
     def __eq__(self, op):
         return self.op == op
 
-    def view(self, ip, neg, pos):
-        print(self[ip - neg:ip + pos + 1])
+    def view(self, mem, ip, neg, pos):
+        print(mem[ip - neg:ip + pos + 1])
 
     @property
     def op_len(self):
@@ -53,7 +52,7 @@ def parse(ip, mem):
     raw = str(mem[ip]).zfill(5)
     mode_a, mode_b, mode_c, op = map(int, [raw[0], raw[1], raw[2], raw[3:]])
     args = [mem[ip + offset] for offset in range(1, op_len[op])]
-    return Info(modes=[mode_a, mode_b, mode_c], args=args, op=op)
+    return Info(modes=[mode_c, mode_b, mode_a], args=args, op=op)
 
 
 def execute(data, inputs: deque):
@@ -61,7 +60,6 @@ def execute(data, inputs: deque):
     ip = 0
     while True:
         i = parse(ip, memory)
-        print(i)
         if i == ADD:
             val1 = memory.val_from_info(i, 0)
             val2 = memory.val_from_info(i, 1)
@@ -81,14 +79,12 @@ def execute(data, inputs: deque):
 
 
 def solve_part_1(data):
-    if TESTING:
-        data = [1002, 4, 3, 4, 33]
     return execute(data, deque([1]))
 
 
 def main():
     data = list(map(int, read().split(',')))
-    print(solve_part_1(data))
+    solve_part_1(data)
 
 
 if __name__ == '__main__':
