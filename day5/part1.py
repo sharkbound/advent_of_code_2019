@@ -27,6 +27,34 @@ class Memory:
         return self.val(info.args[index], info.modes[index])
 
 
+"""
+notes to self, and any others reading this later having trouble with index errors.
+the modes are reverse of the order they appear to me in
+from the example of AOC:
+
+LINK:
+https://adventofcode.com/2019/day/5
+
+ABCDE
+01002
+
+DE - two-digit opcode,      02 == opcode 2
+ C - mode of 1st parameter,  0 == position mode
+ B - mode of 2nd parameter,  1 == immediate mode
+ A - mode of 3rd parameter,  0 == position mode,
+                                  omitted due to being a leading zero
+
+i missed the  `mode of 1st parameter` detail many times over 2 days
+going by param, it read like this:
+ABC
+ 10
+
+to 
+
+CBA
+ 10
+
+"""
 @dataclass
 class Info:
     op: int

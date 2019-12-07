@@ -15,13 +15,13 @@ def make_files(day_folder: Path, *files: Union[str, Path]):
 from read import read, read_lines
 
 
-def solve_part_(data):
+def solve(data):
     pass
 
 
 def main():
     data = read()
-    print(solve_part_(data))
+    print(solve(data))
     
     
 if __name__ == '__main__':
