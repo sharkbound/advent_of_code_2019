@@ -13,30 +13,26 @@ class Memory:
     def __init__(self, data=()):
         self._data = list(data)
 
-    def __getitem__(self, item):
+    def __getitem__(self, item: int):
         return self._data[item]
 
-    def __setitem__(self, key, value):
+    def __setitem__(self, key: int, value: int):
         self._data[key] = value
 
-    def val(self, value, mode):
-        return value if mode == IMMEDIATE else self._data[value]
+    def val(self, value: int, mode: int):
+        if mode == IMMEDIATE:
+            return value
+        return self[value]
+
+    def val_from_info(self, info: 'Info', index: int):
+        return self.val(info.args[index], info.modes[index])
 
 
 @dataclass
 class Info:
-    modes: List[int]
-    args: List[int]
     op: int
-
-    def arg_info(self, i):
-        return self.args[i], self.modes[i]
-
-    def mode(self, index):
-        return self.modes[index]
-
-    def arg(self, index):
-        return self.args[index]
+    args: List[int]
+    modes: List[int]
 
     def __eq__(self, op):
         return self.op == op
@@ -64,24 +60,24 @@ def execute(data, inputs: deque):
     memory = Memory(data.copy())
     ip = 0
     while True:
-        info = parse(ip, memory)
-
-        if info == ADD:
-            val1 = memory.val(*info.arg_info(0))
-            val2 = memory.val(*info.arg_info(1))
-            memory[memory[info.arg(2)]] = val1 + val2
-        elif info == MUL:
-            val1 = memory.val(*info.arg_info(0))
-            val2 = memory.val(*info.arg_info(1))
-            memory[memory[info.arg(2)]] = val1 * val2
-        elif info == INPUT:
-            memory[memory[info.arg(0)]] = inputs.popleft()
-        elif info == OUTPUT:
-            print(memory[memory[info.arg(0)]])
-        elif info == TERMINATE:
+        i = parse(ip, memory)
+        print(i)
+        if i == ADD:
+            val1 = memory.val_from_info(i, 0)
+            val2 = memory.val_from_info(i, 1)
+            memory[i.args[2]] = val1 + val2
+        elif i == MUL:
+            val1 = memory.val_from_info(i, 0)
+            val2 = memory.val_from_info(i, 1)
+            memory[i.args[2]] = val1 * val2
+        elif i == INPUT:
+            memory[i.args[0]] = inputs.popleft()
+        elif i == OUTPUT:
+            print(memory[i.args[0]])
+        elif i == TERMINATE:
             break
 
-        ip += info.op_len
+        ip += i.op_len
 
 
 def solve_part_1(data):
