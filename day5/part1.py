@@ -76,11 +76,10 @@ class Info:
 
 
 OPCODE_LENGTHS = {ADD: 4, MUL: 4, INPUT: 2, OUTPUT: 2, TERMINATE: 1}
-RET_TERMINATE, = range(1)
 intcode_handlers = {}
 
 
-def handler(f, code=None):
+def handler(f=None, code=None):
     if f is None:
         return partial(handler, code=code)
 
@@ -93,35 +92,73 @@ def parse(ip, mem):
     raw = str(mem[ip]).zfill(5)
     mode_a, mode_b, mode_c, op = map(int, [raw[0], raw[1], raw[2], raw[3:]])
     args = [mem[ip + offset] for offset in range(1, op_len[op])]
-    #  note to self, never forget how much trouble the ordering of the modes caused you
+    # note to self, never forget how much trouble the ordering of the modes caused you
     return Info(modes=[mode_c, mode_b, mode_a], args=args, op=op)
 
 
-def execute(data, inputs: deque):
+RET_TERMINATE, = range(1)
+
+
+def incr(ip, i: 'Info'):
+    return ip + i.op_len, None
+
+
+def set_ip(new_ip):
+    return new_ip, None
+
+
+def term():
+    return -1, RET_TERMINATE
+
+
+@handler(code=ADD)
+def intcode_add(i: Info, memory: Memory, ip: int):
+    val1 = memory.val_from_info(i, 0)
+    val2 = memory.val_from_info(i, 1)
+    memory[i.args[2]] = val1 + val2
+    return incr(ip, i)
+
+
+@handler(code=MUL)
+def intcode_mul(i: Info, memory: Memory, ip: int):
+    val1 = memory.val_from_info(i, 0)
+    val2 = memory.val_from_info(i, 1)
+    memory[i.args[2]] = val1 * val2
+    return incr(ip, i)
+
+
+@handler(code=INPUT)
+def intcode_input(i: Info, memory: Memory, ip: int):
+    memory[i.args[0]] = 1
+    return incr(ip, i)
+
+
+@handler(code=OUTPUT)
+def intcode_input(i: Info, memory: Memory, ip: int):
+    print(memory[i.args[0]])
+    return incr(ip, i)
+
+
+@handler(code=TERMINATE)
+def intcode_terminate(i: Info, memory: Memory, ip: int):
+    return term()
+
+
+def execute(data):
     memory = Memory(data.copy())
     ip = 0
     while True:
         i = parse(ip, memory)
-        if i == ADD:
-            val1 = memory.val_from_info(i, 0)
-            val2 = memory.val_from_info(i, 1)
-            memory[i.args[2]] = val1 + val2
-        elif i == MUL:
-            val1 = memory.val_from_info(i, 0)
-            val2 = memory.val_from_info(i, 1)
-            memory[i.args[2]] = val1 * val2
-        elif i == INPUT:
-            memory[i.args[0]] = inputs.popleft()
-        elif i == OUTPUT:
-            print(memory[i.args[0]])
-        elif i == TERMINATE:
+        # for implementations of the intcodes/opcodes, look above for the @handler(code=...) decorated functions
+        ip, result = intcode_handlers[i.op](i, memory, ip)
+        if result is None:
+            continue
+        elif result == RET_TERMINATE:
             break
-
-        ip += i.op_len
 
 
 def solve_part_1(data):
-    return execute(data, deque([1]))
+    return execute(data)
 
 
 def main():

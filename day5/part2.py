@@ -1,11 +1,22 @@
 from collections import deque
 from dataclasses import dataclass
+from functools import partial
 from typing import List
 
 from read import read
 
 POINTER, IMMEDIATE = range(2)
-ADD, MUL, INPUT, OUTPUT, TERMINATE = 1, 2, 3, 4, 99
+(
+    ADD,
+    MUL,
+    INPUT,
+    OUTPUT,
+    TERMINATE,
+    JUMP_IF_TRUE,
+    JUMP_IF_FALSE,
+    LESS_THAN,
+    EQUALS
+) = 1, 2, 3, 4, 99, 5, 6, 7, 8
 
 
 class Memory:
@@ -27,6 +38,36 @@ class Memory:
         return self.val(info.args[index], info.modes[index])
 
 
+"""
+notes to self, and any others reading this later having trouble with index errors.
+the modes are reverse of the order they appear to me in
+from the example of AOC:
+
+LINK:
+https://adventofcode.com/2019/day/5
+
+ABCDE
+01002
+
+DE - two-digit opcode,      02 == opcode 2
+ C - mode of 1st parameter,  0 == position mode
+ B - mode of 2nd parameter,  1 == immediate mode
+ A - mode of 3rd parameter,  0 == position mode,
+                                  omitted due to being a leading zero
+
+i missed the  `mode of 1st parameter` detail many times over 2 days
+going by param, it read like this:
+ABC
+ 10
+
+to 
+
+CBA
+ 10
+
+"""
+
+
 @dataclass
 class Info:
     op: int
@@ -45,73 +86,99 @@ class Info:
 
 
 OPCODE_LENGTHS = {ADD: 4, MUL: 4, INPUT: 2, OUTPUT: 2, TERMINATE: 1}
+intcode_handlers = {}
 
-"""
-notes to self, and any others reading this later having trouble with index errors.
-the modes are reverse of the order they appear to me in
-from the example of AOC:
 
-LINK:
-https://adventofcode.com/2019/day/5
+def handler(f=None, code=None):
+    if f is None:
+        return partial(handler, code=code)
 
-ABCDE
-01002
+    intcode_handlers[code] = f
+    return f
 
-DE - two-digit opcode,      02 == opcode 2
- C - mode of 1st parameter,  0 == position mode
- B - mode of 2nd parameter,  1 == immediate mode
- A - mode of 3rd parameter,  0 == position mode,
-                                  omitted due to being a leading zero
-                                  
-i missed the  `mode of 1st parameter` detail many times over 2 days
-going by param, it read like this:
-ABC
- 10
 
-to 
- 
-CBA
- 10
-
-"""
 def parse(ip, mem):
     op_len = {1: 4, 2: 4, 3: 2, 4: 2, 99: 1}
     raw = str(mem[ip]).zfill(5)
     mode_a, mode_b, mode_c, op = map(int, [raw[0], raw[1], raw[2], raw[3:]])
     args = [mem[ip + offset] for offset in range(1, op_len[op])]
+    # note to self, never forget how much trouble the ordering of the modes caused you
     return Info(modes=[mode_c, mode_b, mode_a], args=args, op=op)
 
 
-def execute(data, inputs: deque):
+RET_TERMINATE, = range(1)
+
+
+def incr(ip, i: 'Info'):
+    return ip + i.op_len, None
+
+
+def set_ip(new_ip):
+    return new_ip, None
+
+
+def term():
+    return -1, RET_TERMINATE
+
+
+@handler(code=ADD)
+def intcode_add(i: Info, memory: Memory, ip: int):
+    val1 = memory.val_from_info(i, 0)
+    val2 = memory.val_from_info(i, 1)
+    memory[i.args[2]] = val1 + val2
+    return incr(ip, i)
+
+
+@handler(code=MUL)
+def intcode_mul(i: Info, memory: Memory, ip: int):
+    val1 = memory.val_from_info(i, 0)
+    val2 = memory.val_from_info(i, 1)
+    memory[i.args[2]] = val1 * val2
+    return incr(ip, i)
+
+
+@handler(code=INPUT)
+def intcode_input(i: Info, memory: Memory, ip: int):
+    memory[i.args[0]] = 1
+    return incr(ip, i)
+
+
+@handler(code=OUTPUT)
+def intcode_input(i: Info, memory: Memory, ip: int):
+    print(memory[i.args[0]])
+    return incr(ip, i)
+
+
+@handler(code=TERMINATE)
+def intcode_terminate(i: Info, memory: Memory, ip: int):
+    return term()
+
+
+@handler(code=JUMP_IF_TRUE)
+def intcode_jump_if_true(i: Info, memory: Memory, ip: int):
+    return  # TODO
+
+
+def execute(data):
     memory = Memory(data.copy())
     ip = 0
     while True:
         i = parse(ip, memory)
-        if i == ADD:
-            val1 = memory.val_from_info(i, 0)
-            val2 = memory.val_from_info(i, 1)
-            memory[i.args[2]] = val1 + val2
-        elif i == MUL:
-            val1 = memory.val_from_info(i, 0)
-            val2 = memory.val_from_info(i, 1)
-            memory[i.args[2]] = val1 * val2
-        elif i == INPUT:
-            memory[i.args[0]] = inputs.popleft()
-        elif i == OUTPUT:
-            print(memory[i.args[0]])
-        elif i == TERMINATE:
+        # for implementations of the intcodes/opcodes, look above for the @handler(code=...) decorated functions
+        ip, result = intcode_handlers[i.op](i, memory, ip)
+        if result is None:
+            continue
+        elif result == RET_TERMINATE:
             break
 
-        ip += i.op_len
 
-
-def solve_part_2(data):
-    return execute(data, deque([1]))
+def solve_part_1(data):
+    return execute(data)
 
 
 def main():
     data = list(map(int, read().split(',')))
-    solve_part_2(data)
+    solve_part_1(data)
 
 
 if __name__ == '__main__':
