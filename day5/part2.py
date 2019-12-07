@@ -85,7 +85,17 @@ class Info:
         return OPCODE_LENGTHS[self.op]
 
 
-OPCODE_LENGTHS = {ADD: 4, MUL: 4, INPUT: 2, OUTPUT: 2, TERMINATE: 1}
+OPCODE_LENGTHS = {
+    ADD: 4,
+    MUL: 4,
+    INPUT: 2,
+    OUTPUT: 2,
+    TERMINATE: 1,
+    JUMP_IF_TRUE: 3,
+    JUMP_IF_FALSE: 3,
+    LESS_THAN: 4,
+    EQUALS: 4
+}
 intcode_handlers = {}
 
 
@@ -98,10 +108,9 @@ def handler(f=None, code=None):
 
 
 def parse(ip, mem):
-    op_len = {1: 4, 2: 4, 3: 2, 4: 2, 99: 1}
     raw = str(mem[ip]).zfill(5)
     mode_a, mode_b, mode_c, op = map(int, [raw[0], raw[1], raw[2], raw[3:]])
-    args = [mem[ip + offset] for offset in range(1, op_len[op])]
+    args = [mem[ip + offset] for offset in range(1, OPCODE_LENGTHS[op])]
     # note to self, never forget how much trouble the ordering of the modes caused you
     return Info(modes=[mode_c, mode_b, mode_a], args=args, op=op)
 
@@ -139,12 +148,12 @@ def intcode_mul(i: Info, memory: Memory, ip: int):
 
 @handler(code=INPUT)
 def intcode_input(i: Info, memory: Memory, ip: int):
-    memory[i.args[0]] = 1
+    memory[i.args[0]] = 7
     return incr(ip, i)
 
 
 @handler(code=OUTPUT)
-def intcode_input(i: Info, memory: Memory, ip: int):
+def intcode_output(i: Info, memory: Memory, ip: int):
     print(memory[i.args[0]])
     return incr(ip, i)
 
@@ -156,7 +165,28 @@ def intcode_terminate(i: Info, memory: Memory, ip: int):
 
 @handler(code=JUMP_IF_TRUE)
 def intcode_jump_if_true(i: Info, memory: Memory, ip: int):
-    return  # TODO
+    if memory.val_from_info(i, 0):
+        return set_ip(memory.val_from_info(i, 1))
+    return incr(ip, i)
+
+
+@handler(code=JUMP_IF_FALSE)
+def intcode_jump_if_true(i: Info, memory: Memory, ip: int):
+    if not memory.val_from_info(i, 0):
+        return set_ip(memory.val_from_info(i, 1))
+    return incr(ip, i)
+
+
+@handler(code=LESS_THAN)
+def intcode_less_than(i: Info, memory: Memory, ip: int):
+    memory[i.args[2]] = int(memory.val_from_info(i, 0) < memory.val_from_info(i, 1))
+    return incr(ip, i)
+
+
+@handler(code=EQUALS)
+def intcode_equals(i: Info, memory: Memory, ip: int):
+    memory[i.args[2]] = int(memory.val_from_info(i, 0) == memory.val_from_info(i, 1))
+    return incr(ip, i)
 
 
 def execute(data):
