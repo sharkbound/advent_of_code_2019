@@ -1,5 +1,6 @@
 from collections import deque
 from dataclasses import dataclass
+from functools import partial
 from typing import List
 
 from read import read
@@ -55,6 +56,8 @@ CBA
  10
 
 """
+
+
 @dataclass
 class Info:
     op: int
@@ -73,6 +76,16 @@ class Info:
 
 
 OPCODE_LENGTHS = {ADD: 4, MUL: 4, INPUT: 2, OUTPUT: 2, TERMINATE: 1}
+RET_TERMINATE, = range(1)
+intcode_handlers = {}
+
+
+def handler(f, code=None):
+    if f is None:
+        return partial(handler, code=code)
+
+    intcode_handlers[code] = f
+    return f
 
 
 def parse(ip, mem):
@@ -80,6 +93,7 @@ def parse(ip, mem):
     raw = str(mem[ip]).zfill(5)
     mode_a, mode_b, mode_c, op = map(int, [raw[0], raw[1], raw[2], raw[3:]])
     args = [mem[ip + offset] for offset in range(1, op_len[op])]
+    #  note to self, never forget how much trouble the ordering of the modes caused you
     return Info(modes=[mode_c, mode_b, mode_a], args=args, op=op)
 
 
