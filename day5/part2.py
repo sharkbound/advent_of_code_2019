@@ -111,7 +111,8 @@ def parse(ip, mem):
     raw = str(mem[ip]).zfill(5)
     mode_a, mode_b, mode_c, op = map(int, [raw[0], raw[1], raw[2], raw[3:]])
     args = [mem[ip + offset] for offset in range(1, OPCODE_LENGTHS[op])]
-    # note to self, never forget how much trouble the ordering of the modes caused you as a lesson to pay more attenion to this stuff in the future
+    # note to self, never forget how much trouble the ordering of the modes caused you as a lesson to pay more
+    # attention to this stuff in the future
     return Info(modes=[mode_c, mode_b, mode_a], args=args, op=op)
 
 
@@ -146,15 +147,18 @@ def intcode_mul(i: Info, memory: Memory, ip: int):
     return incr(ip, i)
 
 
+_INPUT_VALUE = 5
+
+
 @handler(code=INPUT)
 def intcode_input(i: Info, memory: Memory, ip: int):
-    memory[i.args[0]] = 7
+    memory[i.args[0]] = _INPUT_VALUE
     return incr(ip, i)
 
 
 @handler(code=OUTPUT)
 def intcode_output(i: Info, memory: Memory, ip: int):
-    print(memory[i.args[0]])
+    print(memory.val_from_info(i, 0))
     return incr(ip, i)
 
 
