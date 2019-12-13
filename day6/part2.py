@@ -56,10 +56,10 @@ def solve(data):
         total = path_len(path_to_you, common) + path_len(path_to_san, common) - 2
         # add the path total path length to the path length list to min later
         counts.append(total)
-        # python 3.8 f-string debug print, optional
+        # debug python 3.8 f-string print, optional
         print(f'{common=} {total=}')
     # print the best(MIN) path length found
-    return f'==================\nBEST = {min(counts)}\n=================='
+    return f'==================\nBEST = {min(counts)}\n=================='  # debug
 
 
 def main():
