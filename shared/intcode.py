@@ -1,6 +1,6 @@
 from dataclasses import dataclass
 from functools import partial
-from typing import List
+from typing import List, Callable
 
 LOG = False
 
@@ -11,30 +11,34 @@ def enable_logging():
 
 
 def disable_logging():
-    global LOGa
+    global LOG
     LOG = False
 
 
-def register_opcode(name, code):
+def register_opcode(name, code, length):
     OPCODE_TO_NAME[code] = name
     NAME_TO_OPCODE[name] = code
+    OPCODE_LENGTHS[code] = length
     return code
 
 
 POINTER, IMMEDIATE = range(2)
+
 OPCODE_TO_NAME = {}
 NAME_TO_OPCODE = {}
-ADD = register_opcode('ADD', 1)
-MUL = register_opcode('MUL', 2)
-INPUT = register_opcode('INPUT', 3)
-OUTPUT = register_opcode('OUTPUT', 4)
-TERMINATE = register_opcode('TERMINATE', 99)
-JUMP_IF_TRUE = register_opcode('JUMP_IF_TRUE', 5)
-JUMP_IF_FALSE = register_opcode('JUMP_IF_FALSE', 6)
-LESS_THAN = register_opcode('LESS_THAN', 7)
-EQUALS = register_opcode('EQUALS', 8)
+OPCODE_LENGTHS = {}
 
-OP_MAX_NAME_LEN = len(max(OPCODE_TO_NAME.values(), key=len))
+ADD = register_opcode('ADD', code=1, length=4)
+MUL = register_opcode('MUL', code=2, length=4)
+INPUT = register_opcode('INPUT', code=3, length=2)
+OUTPUT = register_opcode('OUTPUT', code=4, length=2)
+TERMINATE = register_opcode('TERMINATE', code=99, length=2)
+JUMP_IF_TRUE = register_opcode('JUMP_IF_TRUE', code=5, length=3)
+JUMP_IF_FALSE = register_opcode('JUMP_IF_FALSE', code=6, length=3)
+LESS_THAN = register_opcode('LESS_THAN', code=7, length=4)
+EQUALS = register_opcode('EQUALS', code=8, length=4)
+
+OP_MAX_NAME_LEN = len(max(NAME_TO_OPCODE, key=len))
 
 
 class Memory:
@@ -73,17 +77,6 @@ class Info:
         return OPCODE_LENGTHS[self.op]
 
 
-OPCODE_LENGTHS = {
-    ADD: 4,
-    MUL: 4,
-    INPUT: 2,
-    OUTPUT: 2,
-    TERMINATE: 1,
-    JUMP_IF_TRUE: 3,
-    JUMP_IF_FALSE: 3,
-    LESS_THAN: 4,
-    EQUALS: 4
-}
 intcode_handlers = {}
 
 
@@ -181,11 +174,30 @@ def intcode_equals(i: Info, memory: Memory, ip: int):
     return incr(ip, i)
 
 
+OP_CALL_LOGGER: Callable[[int, Memory, Info], None] = None
+
+
+def op_call_logger(func):
+    global OP_CALL_LOGGER
+    OP_CALL_LOGGER = func
+    return func
+
+
+@op_call_logger
+def log_call(ip: int, memory: Memory, i: Info):
+    values = [memory.val_from_info(i, index) for index in range(len(i.args))]
+    print(f'IP: {ip:<8}'
+          f'OPCODE({i.op:0>3}): {OPCODE_TO_NAME[i.op]:<{OP_MAX_NAME_LEN + 5}}'
+          f'MODES: {i.modes!r:<13}'
+          f'ARGS: {i.args!r:<18}'
+          f'VALUES: {values!r:<30}')
+
+
 def call_op(ip: int, memory: Memory, i: Info):
     if LOG:
-        print(f'CALL: {OPCODE_TO_NAME[i.op]:<{OP_MAX_NAME_LEN}}, MODES: {i.modes}, ARGS: {i.args}')
+        OP_CALL_LOGGER(ip, memory, i)
     if i.op not in intcode_handlers:
-        raise ValueError(f'bad opcode: {i.op}')
+        raise ValueError(f'BAD OPCODE: {i.op}')
     return intcode_handlers[i.op](i, memory, ip)
 
 
