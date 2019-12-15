@@ -1,7 +1,7 @@
 from typing import Iterator
 
 
-def read(filename='force_data.txt') -> str:
+def read(filename='data.txt') -> str:
     with open(filename) as f:
         return f.read()
 
