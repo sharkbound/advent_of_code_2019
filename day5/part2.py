@@ -1,6 +1,8 @@
 from read import read
 from shared.intcode import *
 
+enable_logging()
+
 
 def solve_part_1(data):
     return execute(data)

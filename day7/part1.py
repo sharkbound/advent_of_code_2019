@@ -1,14 +1,15 @@
 from read import read, read_lines
+from shared.intcode import execute
 
 
 def solve(data):
-    pass
+    print(data)
 
 
 def main():
-    data = read()
-    print(solve(data))
-    
-    
+    data = list(map(int, read().split(',')))
+    print(solve(data.copy()))
+
+
 if __name__ == '__main__':
     main()

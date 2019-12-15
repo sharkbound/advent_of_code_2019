@@ -2,18 +2,39 @@ from dataclasses import dataclass
 from functools import partial
 from typing import List
 
+LOG = False
+
+
+def enable_logging():
+    global LOG
+    LOG = True
+
+
+def disable_logging():
+    global LOGa
+    LOG = False
+
+
+def register_opcode(name, code):
+    OPCODE_TO_NAME[code] = name
+    NAME_TO_OPCODE[name] = code
+    return code
+
+
 POINTER, IMMEDIATE = range(2)
-(
-    ADD,
-    MUL,
-    INPUT,
-    OUTPUT,
-    TERMINATE,
-    JUMP_IF_TRUE,
-    JUMP_IF_FALSE,
-    LESS_THAN,
-    EQUALS
-) = 1, 2, 3, 4, 99, 5, 6, 7, 8
+OPCODE_TO_NAME = {}
+NAME_TO_OPCODE = {}
+ADD = register_opcode('ADD', 1)
+MUL = register_opcode('MUL', 2)
+INPUT = register_opcode('INPUT', 3)
+OUTPUT = register_opcode('OUTPUT', 4)
+TERMINATE = register_opcode('TERMINATE', 99)
+JUMP_IF_TRUE = register_opcode('JUMP_IF_TRUE', 5)
+JUMP_IF_FALSE = register_opcode('JUMP_IF_FALSE', 6)
+LESS_THAN = register_opcode('LESS_THAN', 7)
+EQUALS = register_opcode('EQUALS', 8)
+
+OP_MAX_NAME_LEN = len(max(OPCODE_TO_NAME.values(), key=len))
 
 
 class Memory:
@@ -160,14 +181,24 @@ def intcode_equals(i: Info, memory: Memory, ip: int):
     return incr(ip, i)
 
 
-def execute(data):
+def call_op(ip: int, memory: Memory, i: Info):
+    if LOG:
+        print(f'CALL: {OPCODE_TO_NAME[i.op]:<{OP_MAX_NAME_LEN}}, MODES: {i.modes}, ARGS: {i.args}')
+    if i.op not in intcode_handlers:
+        raise ValueError(f'bad opcode: {i.op}')
+    return intcode_handlers[i.op](i, memory, ip)
+
+
+def execute(data) -> Memory:
     memory = Memory(data.copy())
     ip = 0
     while True:
         i = parse(ip, memory)
         # for implementations of the intcodes/opcodes, look above for the @handler(code=...) decorated functions
-        ip, result = intcode_handlers[i.op](i, memory, ip)
+        ip, result = call_op(ip, memory, i)
         if result is None:
             continue
         elif result == RET_TERMINATE:
             break
+
+    return memory
