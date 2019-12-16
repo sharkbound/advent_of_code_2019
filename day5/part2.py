@@ -3,6 +3,7 @@ from shared.intcode import *
 
 
 def solve_part_1(data):
+    set_input_provider(lambda: 5)
     return execute(data)
 
 
