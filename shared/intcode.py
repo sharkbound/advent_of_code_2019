@@ -128,18 +128,43 @@ def intcode_mul(i: Info, memory: Memory, ip: int):
     return incr(ip, i)
 
 
-_INPUT_VALUE = 5
+INPUT_PROVIDER: Callable = None
+
+
+def set_input_provider(f):
+    global INPUT_PROVIDER
+    INPUT_PROVIDER = f
+    return f
+
+
+@set_input_provider
+def default_input_provider():
+    return 1
 
 
 @handler(code=INPUT)
 def intcode_input(i: Info, memory: Memory, ip: int):
-    memory[i.args[0]] = _INPUT_VALUE
+    memory[i.args[0]] = INPUT_PROVIDER()
     return incr(ip, i)
+
+
+OUTPUT_LOGGER: Callable = None
+
+
+def set_output_logger(f):
+    global OUTPUT_LOGGER
+    OUTPUT_LOGGER = f
+    return f
+
+
+@set_output_logger
+def output_logger(output):
+    print(f'OUTPUT: {output}')
 
 
 @handler(code=OUTPUT)
 def intcode_output(i: Info, memory: Memory, ip: int):
-    print(memory.val_from_info(i, 0))
+    OUTPUT_LOGGER(memory.val_from_info(i, 0))
     return incr(ip, i)
 
 
