@@ -1,8 +1,10 @@
 from copy import copy
-from itertools import permutations
+from itertools import permutations, chain
 
 from read import read
 from shared.intcode import *
+
+enable_logging()
 
 
 def solve(data):
@@ -28,7 +30,7 @@ def solve(data):
 
 
 def main():
-    data = list(map(int, read().split(',')))
+    data = list(map(int, read('sample1.txt').split(',')))
     solve(data)
 
 
