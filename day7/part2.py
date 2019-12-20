@@ -26,7 +26,7 @@ def solve(data):
                         nonlocal last_output
                         inputs.append(v)
                         last_output = v
-                        print(f'last(trimmed): {str(last_output)[:4]}')
+                        print(f'last(trimmed): {str(last_output)[:30]}')
 
                     set_input_provider(inputs.pop)
 
