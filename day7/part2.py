@@ -5,28 +5,35 @@ from read import read
 from shared.intcode import *
 
 enable_logging()
+disable_logging()
 
 
 def solve(data):
-    all_output = set()
-    for perms in permutations(range(5)):
-        perms = list(perms)
-        last_output = 0
-
+    for modes in map(list, permutations(range(5))):
         @set_output_logger
         def output(v):
             nonlocal last_output
             last_output = v
 
-        for perm in perms:
-            input_queue = [last_output, perm]
-            set_input_provider(input_queue.pop)
-            data = copy(data)
-            execute(data)
+        last_output = best_output = 0
+        for mode in modes:
+            for extra_modes in permutations(range(5, 10)):
+                for phase in [mode, *extra_modes]:
+                    inputs = [last_output, phase]
 
-        all_output.add(last_output)
+                    @set_output_logger
+                    def output(v):
+                        nonlocal last_output
+                        inputs.append(v)
+                        last_output = v
+                        print(f'last(trimmed): {str(last_output)[:4]}')
 
-    print(max(all_output))
+                    set_input_provider(inputs.pop)
+
+                    execute(data.copy())
+                    best_output = max(best_output, last_output)
+
+            print(best_output)
 
 
 def main():
