@@ -2,7 +2,7 @@ from copy import copy
 from itertools import permutations
 
 from read import read
-from shared.intcode import *
+from shared.intcode_old import *
 
 
 def solve(data):

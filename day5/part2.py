@@ -1,5 +1,5 @@
 from read import read
-from shared.intcode import *
+from shared.intcode_old import *
 
 
 def solve_part_1(data):

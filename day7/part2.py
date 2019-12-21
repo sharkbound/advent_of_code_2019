@@ -1,9 +1,8 @@
 from collections import deque
-from copy import copy
-from itertools import permutations, chain
+from itertools import permutations
 
 from read import read
-from shared.intcode import *
+from shared.intcode_old import *
 
 
 # enable_logging()
@@ -19,18 +18,16 @@ def solve(data):
     def output(v):
         nonlocal last_output
         inputs.appendleft(v)
-        print(f'last: {str(last_output)[:30]}')
 
     for modes in map(list, permutations(range(5))):
-
         for mode in modes:
             for part2_modes in permutations(range(5, 10)):
                 for phase in [mode, *part2_modes]:
-                    inputs.extendleft([phase, last_output])
+                    inputs.extendleft((phase, last_output))
 
                     execute(data.copy())
                     best_output = max(best_output, last_output)
-
+        print(f'{last_output}')
         print(best_output)
 
 
