@@ -1,5 +1,4 @@
 from read import read
-from shared.intcode_old import *
 from shared.intcode import IntCode
 
 

@@ -1,8 +1,7 @@
-from copy import copy
 from itertools import permutations
 
 from read import read
-from shared.intcode_old import *
+from shared.intcode import IntCode
 
 
 def solve(data):
@@ -11,17 +10,12 @@ def solve(data):
         perms = list(perms)
         last_output = 0
 
-        @set_output_logger
         def output(v):
             nonlocal last_output
             last_output = v
-            # print(v)
 
-        for perm in perms:
-            input_queue = [last_output, perm]
-            set_input_provider(input_queue.pop)
-            data = copy(data)
-            execute(data)
+        for phase in perms:
+            IntCode(data, [phase, last_output], foutput=output).run()
 
         all_output.add(last_output)
 
