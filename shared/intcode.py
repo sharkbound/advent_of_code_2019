@@ -1,6 +1,6 @@
 from collections import deque
 from copy import deepcopy
-from typing import Dict, Callable, NamedTuple, List, Union
+from typing import Dict, Callable, NamedTuple, List, Union, Iterable
 
 
 class Instruction(NamedTuple):
@@ -53,6 +53,9 @@ class Context(NamedTuple):
     def __eq__(self, opcode):
         return self.instr.opcode == opcode
 
+    def arg(self, index):
+        return self.instr.args[index]
+
     def val(self, index: int):
         return self.memory.val_from_instr(self.instr, index)
 
@@ -74,7 +77,7 @@ class Memory:
     def __getitem__(self, item: int):
         return self._data[item]
 
-    def __setitem__(self, key: int, value: int):
+    def __setitem__(self, key, value):
         self._data[key] = value
 
     def val(self, value: int, mode: int):
@@ -97,17 +100,18 @@ class Memory:
 
 
 class IntCode:
-    def __init__(self, code: list, input: Union[deque, list] = None, finput: Callable[[deque], int] = None,
-                 debug=False, foutput: Callable[[int], None] = None):
-        if input is not None and isinstance(input, list):
+    def __init__(self, code: list, input: Union[deque, list, tuple] = None, finput: Callable[[deque], int] = None,
+                 foutput: Callable[[int], None] = None):
+
+        if isinstance(input, Iterable):
             input = deque(input)
 
         self.pause_on_output = False
         self.waiting_on_input = False
-        self.debug = debug
+        self._debug = False
         self.finput = finput or (lambda d: d.popleft())
         self.foutput = foutput or (lambda v: print(f'OUTPUT: {v}'))
-        self.input = input if input is not None else deque([])
+        self.input = input if input is not None else deque()
         self.memory = Memory(code)
         self.ip = 0
         self.paused = False
@@ -122,6 +126,10 @@ class IntCode:
     def _incr_ip(self, c: Context):
         self.ip += len(c.instr)
 
+    def debug(self):
+        self._debug = True
+        return self
+
     @Handler(ADD)
     def opcode_add(self, c: Context):
         c.memory[c.instr.args[2]] = c.val(0) + c.val(1)
@@ -129,13 +137,13 @@ class IntCode:
 
     @Handler(MUL)
     def opcode_mul(self, c: Context):
-        c.memory[c.instr.args[2]] = c.val(0) * c.val(1)
+        c.memory[c.arg(2)] = c.val(0) * c.val(1)
         self._incr_ip(c)
 
     @Handler(INPUT)
     def opcode_input(self, c: Context):
         if self.input:
-            c.memory[c.instr.args[0]] = self.finput(self.input)
+            c.memory[c.arg(0)] = self.finput(self.input)
             self._incr_ip(c)
         else:
             self.waiting_on_input = True
@@ -152,14 +160,16 @@ class IntCode:
         self._incr_ip(c)
 
     @Handler(TERMINATE)
-    def opcode_terminate(self, c: Context):
+    def opcode_terminate(self, _):
         self.terminated = True
-        self._incr_ip(c)
+        # self._incr_ip(c)
 
     @Handler(JUMP_IF_TRUE)
     def opcode_jump_if_true(self, c: Context):
         if c.val(0):
             self.ip = c.val(1)
+        else:
+            self._incr_ip(c)
 
     @Handler(JUMP_IF_FALSE)
     def opcode_jump_if_false(self, c: Context):
@@ -170,11 +180,13 @@ class IntCode:
 
     @Handler(LESS_THAN)
     def opcode_less_than(self, c: Context):
-        c.memory[c.instr.args[2]] = int(c.val(0) < c.val(1))
+        c.memory[c.arg(2)] = int(c.val(0) < c.val(1))
+        self._incr_ip(c)
 
     @Handler(EQUALS)
     def opcode_equals(self, c: Context):
-        c.memory[c.instr.args[2]] = int(c.val(0) == c.val(1))
+        c.memory[c.arg(2)] = int(c.val(0) == c.val(1))
+        self._incr_ip(c)
 
     def clone(self):
         return deepcopy(self)
@@ -198,12 +210,12 @@ class IntCode:
         while True:
             context = Context(ip=self.ip, memory=self.memory, instr=self.memory.instruction(self.ip), cpu=self)
 
-            if self.debug:
+            if self._debug:
                 self.debug_log(self.ip, self.memory, context.instr)
 
             self._opcode_handlers[context.instr.opcode](context)
             if self.terminated or self.paused or self.waiting_on_input:
-                return
+                return self
 
     def _register_op_handler(self):
         for k, v in self.__class__.__dict__.items():

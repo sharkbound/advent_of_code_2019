@@ -1,10 +1,10 @@
 from read import read
 from shared.intcode_old import *
+from shared.intcode import IntCode
 
 
 def solve_part_1(data):
-    set_input_provider(lambda: 5)
-    return execute(data)
+    IntCode(data, [5]).run()
 
 
 def main():
