@@ -120,7 +120,7 @@ class IntCode:
         self.waiting_on_input = False
         self.debug = debug
         self.finput = finput or (lambda d: d.popleft())
-        self.foutput = foutput or (lambda v: print(f'OUTPUT: {v}'))
+        self.foutput = foutput or (lambda v: print(f'OUTPUT#{self.id} {v}'))
         self.input = input if input is not None else deque()
         self.memory = Memory(code)
         self.ip = 0
@@ -142,7 +142,7 @@ class IntCode:
 
     @Handler(ADD)
     def opcode_add(self, c: Context):
-        c.memory[c.instr.args[2]] = c.val(0) + c.val(1)
+        c.memory[c.arg(2)] = c.val(0) + c.val(1)
         self._incr_ip(c)
 
     @Handler(MUL)
@@ -155,19 +155,19 @@ class IntCode:
         if self.input:
             value = self.finput(self.input)
             if self.log_state:
-                print(f'computer #{self.id} got input: {value} at ip {self.ip}')
+                print(f'computer #{self.id} got input {value} at ip {self.ip}')
             c.memory[c.arg(0)] = value
             self._incr_ip(c)
         else:
             self.waiting_on_input = True
+            self.paused = True
             if self.log_state:
                 print(f'computer #{self.id} is waiting for input at ip {self.ip}')
 
     @Handler(OUTPUT)
     def opcode_output(self, c: Context):
-        output = c.val(0)
-        self.foutput(output)
-        self.output = output
+        self.output = c.val(0)
+        self.foutput(self.output)
 
         if self.log_state:
             print(f'computer #{self.id} outputted {self.output}')
@@ -214,8 +214,9 @@ class IntCode:
         return deepcopy(self)
 
     def resume(self, input_value):
-        self.input.appendleft(input_value)
+        self.input.append(input_value)
         self.waiting_on_input = False
+        self.paused = False
         self.run()
 
     def debug_log(self, ip: int, memory: Memory, instr: Instruction):
