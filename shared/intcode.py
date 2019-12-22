@@ -2,6 +2,15 @@ from collections import deque
 from copy import deepcopy
 from typing import Dict, Callable, NamedTuple, List, Union, Iterable
 
+_id = 0
+
+
+def next_id():
+    global _id
+    id = _id
+    _id += 1
+    return id
+
 
 class Instruction(NamedTuple):
     opcode: int
@@ -100,15 +109,16 @@ class Memory:
 
 
 class IntCode:
-    def __init__(self, code: list, input: Union[deque, list, tuple] = None, finput: Callable[[deque], int] = None,
-                 foutput: Callable[[int], None] = None):
+    def __init__(self, code: list, input: Union[list, tuple] = None, finput: Callable[[deque], int] = None,
+                 foutput: Callable[[int], None] = None, debug=False, log_state=False, pause_on_output=False):
 
         if isinstance(input, Iterable):
             input = deque(input)
 
-        self.pause_on_output = False
+        self.pause_on_output = pause_on_output
+        self.log_state = log_state
         self.waiting_on_input = False
-        self._debug = False
+        self.debug = debug
         self.finput = finput or (lambda d: d.popleft())
         self.foutput = foutput or (lambda v: print(f'OUTPUT: {v}'))
         self.input = input if input is not None else deque()
@@ -118,17 +128,17 @@ class IntCode:
         self.terminated = False
         self.output = None
         self._opcode_handlers: Dict[int, Callable[[Context], None]] = {}
+        self.id = next_id()
+        self.started = False
 
         self._register_op_handler()
 
-    running = property(lambda self: not self.paused and not self.terminated)
+    @property
+    def running(self):
+        return not self.paused and not self.terminated
 
     def _incr_ip(self, c: Context):
         self.ip += len(c.instr)
-
-    def debug(self):
-        self._debug = True
-        return self
 
     @Handler(ADD)
     def opcode_add(self, c: Context):
@@ -143,10 +153,15 @@ class IntCode:
     @Handler(INPUT)
     def opcode_input(self, c: Context):
         if self.input:
-            c.memory[c.arg(0)] = self.finput(self.input)
+            value = self.finput(self.input)
+            if self.log_state:
+                print(f'computer #{self.id} got input: {value} at ip {self.ip}')
+            c.memory[c.arg(0)] = value
             self._incr_ip(c)
         else:
             self.waiting_on_input = True
+            if self.log_state:
+                print(f'computer #{self.id} is waiting for input at ip {self.ip}')
 
     @Handler(OUTPUT)
     def opcode_output(self, c: Context):
@@ -154,15 +169,22 @@ class IntCode:
         self.foutput(output)
         self.output = output
 
+        if self.log_state:
+            print(f'computer #{self.id} outputted {self.output}')
+
         if self.pause_on_output:
             self.paused = True
+            if self.log_state:
+                print(f'computer #{self.id} paused at a output at ip {self.ip}')
 
         self._incr_ip(c)
 
     @Handler(TERMINATE)
     def opcode_terminate(self, _):
         self.terminated = True
-        # self._incr_ip(c)
+        self.started = False
+        if self.log_state:
+            print(f'computer #{self.id} has terminated at ip {self.ip}')
 
     @Handler(JUMP_IF_TRUE)
     def opcode_jump_if_true(self, c: Context):
@@ -191,26 +213,26 @@ class IntCode:
     def clone(self):
         return deepcopy(self)
 
-    def resume(self, input_value, pause_on_output=False):
+    def resume(self, input_value):
         self.input.appendleft(input_value)
         self.waiting_on_input = False
-        self.run(pause_on_output=pause_on_output)
+        self.run()
 
     def debug_log(self, ip: int, memory: Memory, instr: Instruction):
         values = [memory.val_from_instr(instr, index) for index in range(len(instr.args))]
-        print(f'IP: {ip:<8}'
+        print(f'CPU#{self.id!s:<5}'
+              f'IP: {ip:<8}'
               f'OPCODE({instr.opcode:0>3}): {OPCODE_TO_NAME[instr.opcode]:<{OP_MAX_NAME_LEN + 5}}'
               f'MODES: {instr.modes!r:<13}'
               f'ARGS: {instr.args!r:<18}'
               f'VALUES: {values!r:<30}')
 
-    def run(self, pause_on_output=False):
-        self.pause_on_output = pause_on_output
-
+    def run(self):
+        self.started = True
         while True:
             context = Context(ip=self.ip, memory=self.memory, instr=self.memory.instruction(self.ip), cpu=self)
 
-            if self._debug:
+            if self.debug:
                 self.debug_log(self.ip, self.memory, context.instr)
 
             self._opcode_handlers[context.instr.opcode](context)
@@ -223,9 +245,3 @@ class IntCode:
                 bound = v.f.__get__(self)
                 self._opcode_handlers[v.opcode] = bound
                 setattr(self, k, bound)
-
-
-if __name__ == '__main__':
-    cpu = IntCode([103, 0, 4, 0, 99], debug=False)
-    cpu.run(True)
-    cpu.resume('added', False)
