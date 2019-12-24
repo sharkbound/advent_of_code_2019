@@ -2,23 +2,18 @@ from itertools import permutations
 
 from read import read
 from shared.intcode import IntCode
+from shared.io import MaxIO, LastIO, IOEventRelay
 
 
 def solve(data):
-    all_output = set()
+    best = MaxIO()
+
     for phases in permutations(range(5)):
-        last_output = 0
-
-        def output(v):
-            nonlocal last_output
-            last_output = v
-
+        io = LastIO()
         for phase in phases:
-            IntCode(data, [phase, last_output], foutput=output).run()
+            IntCode(data, IOEventRelay([phase, io.value], best, io)).run()
 
-        all_output.add(last_output)
-
-    print(max(all_output))
+    print(best.max)
 
 
 def main():

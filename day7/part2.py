@@ -1,28 +1,22 @@
-from collections import deque
 from itertools import permutations
 
 from read import read
 from shared.intcode import IntCode
+from shared.io import IOEventRelay, MaxIO
 
 
 def solve(data):
-    best_output = 0
+    best = MaxIO()
 
     for phases in permutations(range(5, 10)):
-        output = deque([0])
-
-        def output_handler(v):
-            nonlocal best_output
-            output.append(v)
-            best_output = max(best_output, v)
-
-        computers = [IntCode(data, [phase], foutput=output_handler) for phase in phases]
+        io = MaxIO([0])
+        computers = [IntCode(data, IOEventRelay([phase], io, best, log_output=False)) for phase in phases]
 
         while not all(cpu.terminated for cpu in computers):
             for cpu in filter(lambda c: not c.terminated, computers):
-                cpu.resume(output.popleft())
+                cpu.resume(io.first())
 
-    return best_output
+    return best.max
 
 
 def main():

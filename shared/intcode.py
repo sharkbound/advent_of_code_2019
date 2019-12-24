@@ -1,6 +1,8 @@
-from collections import deque
 from copy import deepcopy
-from typing import Dict, Callable, NamedTuple, List, Union, Iterable
+from typing import Dict, Callable, NamedTuple, List, TYPE_CHECKING
+
+if TYPE_CHECKING:
+    from shared.io import IO
 
 _id = 0
 
@@ -109,19 +111,13 @@ class Memory:
 
 
 class IntCode:
-    def __init__(self, code: list, input: Union[list, tuple] = None, finput: Callable[[deque], int] = None,
-                 foutput: Callable[[int], None] = None, debug=False, log_state=False, pause_on_output=False):
-
-        if isinstance(input, Iterable):
-            input = deque(input)
-
+    def __init__(self, code: list, io: 'IO' = None, debug=False, log_state=False, pause_on_output=False):
+        from .io import IO
         self.pause_on_output = pause_on_output
         self.log_state = log_state
         self.waiting_on_input = False
         self.debug = debug
-        self.finput = finput or (lambda d: d.popleft())
-        self.foutput = foutput or (lambda v: print(f'OUTPUT#{self.id} {v}'))
-        self.input = input if input is not None else deque()
+        self.io = io if io is not None else IO()
         self.memory = Memory(code)
         self.ip = 0
         self.paused = False
@@ -152,8 +148,8 @@ class IntCode:
 
     @Handler(INPUT)
     def opcode_input(self, c: Context):
-        if self.input:
-            value = self.finput(self.input)
+        if self.io:
+            value = self.io.first(self)
             if self.log_state:
                 print(f'computer #{self.id} got input {value} at ip {self.ip}')
             c.memory[c.arg(0)] = value
@@ -167,7 +163,7 @@ class IntCode:
     @Handler(OUTPUT)
     def opcode_output(self, c: Context):
         self.output = c.val(0)
-        self.foutput(self.output)
+        self.io.on_output(self.output, self)
 
         if self.log_state:
             print(f'computer #{self.id} outputted {self.output}')
@@ -214,7 +210,7 @@ class IntCode:
         return deepcopy(self)
 
     def resume(self, input_value):
-        self.input.append(input_value)
+        self.io.append(input_value)
         self.waiting_on_input = False
         self.paused = False
         self.run()
