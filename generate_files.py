@@ -21,7 +21,7 @@ def solve(data):
 
 def main():
     data = read()
-    print(solve(data))
+    solve(data)
     
     
 if __name__ == '__main__':
