@@ -1,12 +1,9 @@
-from collections import Counter
 from dataclasses import dataclass, field
-from itertools import zip_longest, count
 from typing import List
 
-from numba.typing.npydecl import NpArray
+import numpy as np
 
 from read import read
-import numpy as np
 
 
 @dataclass(frozen=True)
