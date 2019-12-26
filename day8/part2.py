@@ -51,8 +51,8 @@ class Image:
 
 def solve(data):
     image = Image(25, 6, data)
-    best = min(image.layers, key=lambda l: len(l.raw[l.raw == 0]))
-    print(len(best.raw[best.raw == 1]) * len(best.raw[best.raw == 2]))
+    best = min(image.layers, key=lambda l: sum(l.raw == 0))
+    print(sum(best.raw == 1) * sum(best.raw == 2))
 
 
 def main():
