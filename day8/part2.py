@@ -49,10 +49,32 @@ class Image:
             yield self[row_index]
 
 
+SIZE = HEIGHT, WIDTH = 6, 25
+
+
+def first_non_transparent(values):
+    for x in values:
+        if x != 2:
+            return x
+
+
 def solve(data):
-    image = Image(25, 6, data)
-    best = min(image.layers, key=lambda l: sum(l.raw == 0))
-    print(sum(best.raw == 1) * sum(best.raw == 2))
+    layers = np.array([
+        arr.reshape(SIZE)
+        for arr in np.array_split(data, len(data) // (WIDTH * HEIGHT))
+    ])
+
+    final = np.zeros(SIZE, dtype=np.int)
+    for i in np.ndindex(SIZE):
+        final[i] = first_non_transparent(layer[i] for layer in layers)
+
+    graph(final)
+
+
+def graph(final):
+    import matplotlib.pyplot as plt
+    plt.imshow(final)
+    plt.show()
 
 
 def main():
