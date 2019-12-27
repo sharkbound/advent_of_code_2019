@@ -88,14 +88,15 @@ class Handler:
 
 
 class Memory:
-    def __init__(self, data=()):
-        self._data = list(data)
+    def __init__(self, data=(), cpu: 'IntCode' = None):
+        self.cpu = cpu
+        self.data = list(data)
 
     def __getitem__(self, item: int):
-        return self._data[item]
+        return self.data[item]
 
     def __setitem__(self, key, value):
-        self._data[key] = value
+        self.data[key] = value
 
     def val(self, value: int, mode: int):
         if mode == IMMEDIATE:
@@ -127,7 +128,7 @@ class IntCode:
         self.waiting_on_input = False
         self.debug = debug
         self.io = io if io is not None else IO()
-        self.memory = Memory(code)
+        self.memory = Memory(code, self)
         self.ip = 0
         self.paused = False
         self.terminated = False
