@@ -1,14 +1,14 @@
-from read import read, read_lines
+from read import read
 
 
-def solve(data):
-    pass
+def solve(program):
+    print(program)
 
 
 def main():
-    data = read()
+    data = list(map(int, read().split(',')))
     solve(data)
-    
-    
+
+
 if __name__ == '__main__':
     main()

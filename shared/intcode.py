@@ -4,14 +4,18 @@ from typing import Dict, Callable, NamedTuple, List, TYPE_CHECKING
 if TYPE_CHECKING:
     from shared.io import IO
 
-_id = 0
+
+class IdGenerator:
+    def __init__(self):
+        self.id = 0
+
+    def __next__(self):
+        id = self.id
+        self.id += 1
+        return id
 
 
-def next_id():
-    global _id
-    id = _id
-    _id += 1
-    return id
+id_generator = IdGenerator()
 
 
 class Instruction(NamedTuple):
@@ -36,7 +40,9 @@ def register_opcode(name, code, length):
     return code
 
 
-POINTER, IMMEDIATE = range(2)
+POINTER = 0
+IMMEDIATE = 1
+RELATIVE = 2
 
 OPCODE_TO_NAME = {}
 NAME_TO_OPCODE = {}
@@ -94,7 +100,10 @@ class Memory:
     def val(self, value: int, mode: int):
         if mode == IMMEDIATE:
             return value
-        return self[value]
+        elif mode == RELATIVE:
+            return value
+        elif mode == POINTER:
+            return self[value]
 
     def instruction(self, ip: int):
         raw = str(self[ip]).zfill(5)
@@ -124,7 +133,7 @@ class IntCode:
         self.terminated = False
         self.output = None
         self._opcode_handlers: Dict[int, Callable[[Context], None]] = {}
-        self.id = next_id()
+        self.id = next(id_generator)
         self.started = False
 
         self._register_op_handler()

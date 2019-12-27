@@ -10,7 +10,7 @@ def solve(data):
 
     for phases in permutations(range(5, 10)):
         io = MaxIO([0])
-        computers = [IntCode(data, IOEventRelay([phase], io, best, log_output=False)) for phase in phases]
+        computers = [IntCode(data, IOEventRelay([phase], io, best)) for phase in phases]
 
         while not all(cpu.terminated for cpu in computers):
             for cpu in filter(lambda c: not c.terminated, computers):
