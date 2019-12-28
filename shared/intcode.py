@@ -1,3 +1,4 @@
+from collections import defaultdict
 from copy import deepcopy
 from typing import Dict, Callable, NamedTuple, List, TYPE_CHECKING
 
@@ -57,6 +58,7 @@ JUMP_IF_TRUE = register_opcode('JUMP_IF_TRUE', code=5, length=3)
 JUMP_IF_FALSE = register_opcode('JUMP_IF_FALSE', code=6, length=3)
 LESS_THAN = register_opcode('LESS_THAN', code=7, length=4)
 EQUALS = register_opcode('EQUALS', code=8, length=4)
+MODIFY_REL_BASE = register_opcode('MODIFY_REL_BASE', code=9, length=2)
 
 OP_MAX_NAME_LEN = len(max(NAME_TO_OPCODE, key=len))
 
@@ -91,20 +93,45 @@ class Memory:
     def __init__(self, data=(), cpu: 'IntCode' = None):
         self.cpu = cpu
         self.data = list(data)
+        self.extended = defaultdict(int)
+        self._program_range = range(len(self.data))
 
     def __getitem__(self, item: int):
         return self.data[item]
 
+    def _get_index_value(self, index):
+        self._check_not_negative(index)
+
+        if index not in self._program_range:
+            return self.extended[index]
+
+        return self[index]
+
+    def _set_index_value(self, index, value):
+        self._check_not_negative(index)
+
+        if index not in self._program_range:
+            self.extended[index] = value
+
+        self[index] = value
+
+    def _check_not_negative(self, index):
+        if index < 0:
+            raise ValueError(f'memory index requested was negative {index}')
+
     def __setitem__(self, key, value):
+        self._check_not_negative(key)
         self.data[key] = value
 
     def val(self, value: int, mode: int):
         if mode == IMMEDIATE:
             return value
         elif mode == RELATIVE:
-            return value
+            return self._get_index_value(self.cpu.rel_base + value)
         elif mode == POINTER:
-            return self[value]
+            return self._get_index_value(value)
+
+        raise ValueError(f'bad mode {mode} with value {value}')
 
     def instruction(self, ip: int):
         raw = str(self[ip]).zfill(5)
@@ -130,10 +157,11 @@ class IntCode:
         self.io = io if io is not None else IO()
         self.memory = Memory(code, self)
         self.ip = 0
+        self.rel_base = 0
         self.paused = False
         self.terminated = False
         self.output = None
-        self._opcode_handlers: Dict[int, Callable[[Context], None]] = {}
+        self.opcode_handlers: Dict[int, Callable[[Context], None]] = {}
         self.id = next(id_generator)
         self.started = False
 
@@ -216,6 +244,10 @@ class IntCode:
         c.memory[c.arg(2)] = int(c.val(0) == c.val(1))
         self._incr_ip(c)
 
+    @Handler(MODIFY_REL_BASE)
+    def opcode_modify_rel_base(self, c: Context):
+        self.rel_base += c.val(0)
+
     def clone(self):
         return deepcopy(self)
 
@@ -242,7 +274,7 @@ class IntCode:
             if self.debug:
                 self.debug_log(self.ip, self.memory, context.instr)
 
-            self._opcode_handlers[context.instr.opcode](context)
+            self.opcode_handlers[context.instr.opcode](context)
             if self.terminated or self.paused or self.waiting_on_input:
                 return self
 
@@ -250,5 +282,5 @@ class IntCode:
         for k, v in self.__class__.__dict__.items():
             if isinstance(v, Handler):
                 bound = v.f.__get__(self)
-                self._opcode_handlers[v.opcode] = bound
+                self.opcode_handlers[v.opcode] = bound
                 setattr(self, k, bound)
