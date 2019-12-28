@@ -5,6 +5,10 @@ if TYPE_CHECKING:
     from shared.intcode import IntCode
 
 
+def basic_input(*inputs) -> 'IO':
+    return IO(inputs)
+
+
 class IO:
     def __init__(self, initial: Iterable = (), log_output=True):
         if isinstance((queue := initial), (tuple, list)):

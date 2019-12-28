@@ -112,8 +112,9 @@ class Memory:
 
         if index not in self._program_range:
             self.extended[index] = value
+            return
 
-        self[index] = value
+        self.data[index] = value
 
     def _check_not_negative(self, index):
         if index < 0:
@@ -121,7 +122,7 @@ class Memory:
 
     def __setitem__(self, key, value):
         self._check_not_negative(key)
-        self.data[key] = value
+        self._set_index_value(key, value)
 
     def val(self, value: int, mode: int):
         if mode == IMMEDIATE:
@@ -190,7 +191,7 @@ class IntCode:
             value = self.io.first(self)
             if self.log_state:
                 print(f'computer #{self.id} got input {value} at ip {self.ip}')
-            c.memory[c.arg(0)] = value
+            c.memory[c.val(0)] = value
             self._incr_ip(c)
         else:
             self.waiting_on_input = True
@@ -247,6 +248,7 @@ class IntCode:
     @Handler(MODIFY_REL_BASE)
     def opcode_modify_rel_base(self, c: Context):
         self.rel_base += c.val(0)
+        self._incr_ip(c)
 
     def clone(self):
         return deepcopy(self)
