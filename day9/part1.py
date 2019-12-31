@@ -1,10 +1,10 @@
 from read import read
 from shared.intcode import IntCode
-from shared.io import basic_input
+from shared.io import IO
 
 
 def solve(program):
-    IntCode(program, basic_input(1), debug=True).run()
+    IntCode(program, IO([1])).run()
 
 
 def main():

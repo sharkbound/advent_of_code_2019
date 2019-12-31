@@ -5,6 +5,9 @@ from typing import Dict, Callable, NamedTuple, List, TYPE_CHECKING
 if TYPE_CHECKING:
     from shared.io import IO
 
+DEBUG = {'debug': True, 'log_state': True}
+LOG_STATE = {'log_state': True}
+
 
 class IdGenerator:
     def __init__(self):
@@ -25,10 +28,7 @@ class Instruction(NamedTuple):
     modes: List[int]
 
     def __eq__(self, opcode):
-        return self.opcode == opcode
-
-    def view(self, mem, ip, neg, pos):
-        return mem[ip - neg:ip + pos + 1]
+        return self.opcode == (opcode if isinstance(opcode, int) else opcode.opcode)
 
     def __len__(self):
         return OPCODE_LENGTHS[self.opcode]
@@ -75,8 +75,21 @@ class Context(NamedTuple):
     def arg(self, index):
         return self.instr.args[index]
 
+    def mode(self, index):
+        return self.instr.modes[index]
+
     def val(self, index: int):
         return self.memory.val_from_instr(self.instr, index)
+
+    def pointer(self, index):
+        mode = self.mode(index)
+        if mode in (IMMEDIATE, POINTER):
+            return self.arg(index)
+        # commented out due to this causing a bug with writing to wrong addresses
+        # if mode == POINTER:
+        #     return self.memory[self.arg(index)]
+        if mode == RELATIVE:
+            return self.cpu.rel_base + self.arg(index)
 
 
 class Handler:
@@ -92,45 +105,49 @@ class Handler:
 class Memory:
     def __init__(self, data=(), cpu: 'IntCode' = None):
         self.cpu = cpu
-        self.data = list(data)
+        self.program = list(data)
         self.extended = defaultdict(int)
-        self._program_range = range(len(self.data))
+        self._program_range = range(len(self.program))
+        self._program_len = len(self.program)
 
-    def __getitem__(self, item: int):
-        return self.data[item]
+    def __getitem__(self, index: int):
+        return self.get(index)
 
-    def _get_index_value(self, index):
+    def is_extended_memory(self, index):
+        return index not in self._program_range
+
+    def get(self, index):
+        if self.is_extended_memory(index):
+            self._check_not_negative(index - self._program_len)
+            return self.extended[index - self._program_len]
+
         self._check_not_negative(index)
+        return self.program[index]
 
+    def __setitem__(self, key, value):
+        self.set(key, value)
+
+    def set(self, index, value):
         if index not in self._program_range:
-            return self.extended[index]
-
-        return self[index]
-
-    def _set_index_value(self, index, value):
-        self._check_not_negative(index)
-
-        if index not in self._program_range:
-            self.extended[index] = value
+            self._check_not_negative(index - self._program_len)
+            self.extended[index - self._program_len] = value
             return
 
-        self.data[index] = value
+        self._check_not_negative(index)
+        self.program[index] = value
 
     def _check_not_negative(self, index):
         if index < 0:
             raise ValueError(f'memory index requested was negative {index}')
 
-    def __setitem__(self, key, value):
-        self._check_not_negative(key)
-        self._set_index_value(key, value)
-
     def val(self, value: int, mode: int):
         if mode == IMMEDIATE:
             return value
         elif mode == RELATIVE:
-            return self._get_index_value(self.cpu.rel_base + value)
+            return self[self.cpu.rel_base + value]
+            # return self.extended[self.cpu.rel_base + value - self._program_len]
         elif mode == POINTER:
-            return self._get_index_value(value)
+            return self[value]
 
         raise ValueError(f'bad mode {mode} with value {value}')
 
@@ -139,7 +156,7 @@ class Memory:
         modes = [int(x) for x in (raw[2], raw[1], raw[0])]
         opcode = int(raw[3:])
         opcode_len = OPCODE_LENGTHS[opcode]
-        args = [self[ip + offset] for offset in range(1, opcode_len)] \
+        args = [self.program[ip + offset] for offset in range(1, opcode_len)] \
             if opcode_len - 1 \
             else []
         return Instruction(opcode=opcode, args=args, modes=modes)
@@ -177,12 +194,12 @@ class IntCode:
 
     @Handler(ADD)
     def opcode_add(self, c: Context):
-        c.memory[c.arg(2)] = c.val(0) + c.val(1)
+        c.memory[c.pointer(2)] = c.val(0) + c.val(1)
         self._incr_ip(c)
 
     @Handler(MUL)
     def opcode_mul(self, c: Context):
-        c.memory[c.arg(2)] = c.val(0) * c.val(1)
+        c.memory[c.pointer(2)] = c.val(0) * c.val(1)
         self._incr_ip(c)
 
     @Handler(INPUT)
@@ -191,7 +208,7 @@ class IntCode:
             value = self.io.first(self)
             if self.log_state:
                 print(f'computer #{self.id} got input {value} at ip {self.ip}')
-            c.memory[c.val(0)] = value
+            c.memory[c.pointer(0)] = value
             self._incr_ip(c)
         else:
             self.waiting_on_input = True
@@ -237,12 +254,12 @@ class IntCode:
 
     @Handler(LESS_THAN)
     def opcode_less_than(self, c: Context):
-        c.memory[c.arg(2)] = int(c.val(0) < c.val(1))
+        c.memory[c.pointer(2)] = int(c.val(0) < c.val(1))
         self._incr_ip(c)
 
     @Handler(EQUALS)
     def opcode_equals(self, c: Context):
-        c.memory[c.arg(2)] = int(c.val(0) == c.val(1))
+        c.memory[c.pointer(2)] = int(c.val(0) == c.val(1))
         self._incr_ip(c)
 
     @Handler(MODIFY_REL_BASE)
@@ -259,14 +276,14 @@ class IntCode:
         self.paused = False
         self.run()
 
-    def debug_log(self, ip: int, memory: Memory, instr: Instruction):
-        values = [memory.val_from_instr(instr, index) for index in range(len(instr.args))]
+    def debug_log(self, c: Context):
+        values = [c.memory.val_from_instr(c.instr, index) for index in range(len(c.instr.args))]
         print(f'CPU#{self.id!s:<5}'
-              f'IP: {ip:<8}'
-              f'OPCODE({instr.opcode:0>3}): {OPCODE_TO_NAME[instr.opcode]:<{OP_MAX_NAME_LEN + 5}}'
-              f'MODES: {instr.modes!r:<13}'
-              f'ARGS: {instr.args!r:<18}'
-              f'VALUES: {values!r:<30}')
+              f'IP: {self.ip:<8}'
+              f'OPCODE({c.instr.opcode:0>3}): {OPCODE_TO_NAME[c.instr.opcode]:<{OP_MAX_NAME_LEN + 4}} '
+              f'MODES: {c.instr.modes!r:<12} '
+              f'ARGS: {c.instr.args!r:<16} '
+              f'VALUES: {values!r:<29} ')
 
     def run(self):
         self.started = True
@@ -274,7 +291,7 @@ class IntCode:
             context = Context(ip=self.ip, memory=self.memory, instr=self.memory.instruction(self.ip), cpu=self)
 
             if self.debug:
-                self.debug_log(self.ip, self.memory, context.instr)
+                self.debug_log(context)
 
             self.opcode_handlers[context.instr.opcode](context)
             if self.terminated or self.paused or self.waiting_on_input:

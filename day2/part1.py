@@ -3,7 +3,7 @@ from shared.intcode import IntCode
 
 
 def solve_part_1(data):
-    data[1:3] = 12, 2
+    data[1], data[2] = 12, 2
     print(IntCode(data).run().memory[0])
 
 
