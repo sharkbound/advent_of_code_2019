@@ -278,8 +278,8 @@ class IntCode:
 
     def debug_log(self, c: Context):
         values = [c.memory.val_from_instr(c.instr, index) for index in range(len(c.instr.args))]
-        print(f'CPU#{self.id!s:<5}'
-              f'IP: {self.ip:<8}'
+        print(f'CPU#{self.id!s:<4} '
+              f'IP: {self.ip:<7} '
               f'OPCODE({c.instr.opcode:0>3}): {OPCODE_TO_NAME[c.instr.opcode]:<{OP_MAX_NAME_LEN + 4}} '
               f'MODES: {c.instr.modes!r:<12} '
               f'ARGS: {c.instr.args!r:<16} '
