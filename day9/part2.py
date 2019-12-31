@@ -4,7 +4,7 @@ from shared.io import IO
 
 
 def solve(program):
-    IntCode(program, IO.from_args(1)).run()
+    IntCode(program, IO.from_args(2)).run()
 
 
 def main():
