@@ -1,10 +1,17 @@
+from enum import Enum
+
 import numpy as np
 
 from read import read_lines
 
 
+class Type(Enum):
+    empty = '.'
+    asteroid = '#'
+
+
 def solve(data: np.ndarray):
-    print(data.shape)
+    print(data.size, data.shape)
 
 
 def main():

@@ -10,7 +10,6 @@ def get_fuel(mass):
 def solve_part_2(masses):
     return sum(map(get_fuel, masses))
 
-
 def main():
     data = list(map(int, read_lines()))
     print(solve_part_2(data))
